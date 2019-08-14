@@ -1,0 +1,9 @@
+{
+  "plugins": {
+    "postcss-import": {},
+    "postcss-hexrgba": {},
+    "postcss-cssnext": {
+      "browsers": ["last 2 versions", "> 2%"]
+    }
+  }
+}

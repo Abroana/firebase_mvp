@@ -1,0 +1,9 @@
+{
+  "files": [
+    "./dist/js/**",
+    "*.html"
+  ],
+  "server": {
+    "index": "index_info.html"
+  }
+}
