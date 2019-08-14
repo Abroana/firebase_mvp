@@ -1,0 +1,23 @@
+@import url('./reset.css');
+
+input {
+  outline: none;
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+textarea {
+  font-family: 'Open Sans', sans-serif;
+}
+
+button {
+  cursor: pointer;
+  outline: none;
+}
+
+body {
+  font-family: 'Open Sans', sans-serif;
+}
