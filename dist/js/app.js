@@ -1,12 +1,118 @@
 (function () {
 'use strict';
 
+var Cookie = {
+  get: function get(name) {
+    var matches = window.parent.document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[]\\\/\+^])/g, '\\$1') + '=([^;]*)'));
+
+    return matches ? decodeURIComponent(matches[1]) : undefined;
+  },
+  set: function set(name, value) {
+    var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+    var expires = options.expires;
+    var cookieOption = options;
+    var updatedCookie = void 0;
+    var d = new Date();
+
+    if (typeof expires === 'number' && expires) {
+      d.setTime(d.getTime() + expires * 1000);
+      expires = d;
+    } else {
+      expires = new Date(d.getTime() + 14 * 24 * 60 * 60 * 1000);
+    }
+    if (expires && expires.toUTCString) {
+      expires = expires.toUTCString();
+      cookieOption.expires = expires;
+    }
+    var cookieValue = encodeURIComponent(value);
+
+    updatedCookie = name + '=' + cookieValue;
+    Object.keys(cookieOption).forEach(function (propName) {
+      updatedCookie += '; ' + propName;
+      var propValue = cookieOption[propName];
+
+      if (propValue !== true) {
+        updatedCookie += '=' + propValue;
+      }
+    });
+    window.parent.document.cookie = updatedCookie;
+  },
+  delete: function _delete(name) {
+    this.set(name, '', { expires: -1 });
+  }
+};
+
+var isMobile = function () {
+  if (navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) || navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) || navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) || navigator.userAgent.match(/Windows Phone/i)) {
+    return true;
+  }
+
+  return false;
+}();
+
+var appOptions = {
+  authUrl: 'https://login.dnevnik.ru/oauth2',
+  grantUrl: 'https://api.dnevnik.ru/v1/authorizations',
+  scope: 'CommonInfo',
+  clientId: 'c2eb1c41dac14f98883add55494b9cf9',
+  redirectUrl: window.location.href + '?auth=true',
+  provider: 'firebase',
+  api: 'https://api.dnevnik.ru/v1/',
+  apiMobile: 'https://api.dnevnik.ru/modile/v1/',
+  isMobile: isMobile,
+  userLink: 'https://dnevnik.ru/user/user.aspx?user=',
+  cdnPath: 'https://ad.csdnevnik.ru/special/staging/petsforever/img/',
+  cdnMain: 'https://ad.csdnevnik.ru/special/staging/petsforever/',
+  origin: '.dnevnik.ru',
+  admins: ['1000006315838', '1000006435101', '1000004681017', '1000004934922', '1000005435557', '1000008630961', '1000003565717']
+};
+
+var Auth = {
+  token: undefined,
+  auth: function auth(callback) {
+    var token;
+
+    function getToken() {
+      token = /access_token=([-0-9a-zA-Z_]+)/.exec(window.location.hash) || [];
+
+      return token[1];
+    }
+    token = Cookie.get(appOptions.provider + '_token') || getToken();
+    if (undefined !== token) {
+      Cookie.delete(appOptions.provider + '_token');
+      Cookie.set(appOptions.provider + '_token', token);
+      this.token = token;
+      if (typeof callback === 'function') {
+        callback();
+      }
+    } else {
+      var error = /error=([-0-9a-zA-Z_]+)/.exec(window.location.hash) || [];
+
+      if (undefined !== error[1]) {
+        Cookie.delete(appOptions.provider + '_token');
+        this.token = undefined;
+      } else {
+        window.location.href = appOptions.authUrl + '?response_type=token&client_id=' + appOptions.clientId + '&scope=' + appOptions.scope + '&redirect_uri=' + appOptions.redirectUrl;
+      }
+    }
+  }
+};
+
 // @ts-nocheck
 /* global firebase */
-
 var App = {
   init: function init() {
     var that = this;
+
+    if (document.location.href.indexOf('access_token') > -1) {
+      Auth.auth(function () {
+        var path = window.location.pathname.substring(0, window.location.pathname.length);
+
+        history.pushState('', document.title, path);
+      });
+    }
+
     var firebaseConfig = {
       apiKey: 'AIzaSyCmEjhSDdqEsmIdxe9VN4GI7IxTD2LhU4I',
       authDomain: 'testproject-48d5e.firebaseapp.com',
@@ -35,13 +141,17 @@ var App = {
         $('#app').html(html);
         that.getList();
       } else {
-        $('#app').html('<div class="page"><button class="auth-btn firebase-btn">Войти</button><div class="list"></div></div>');
+        $('#app').html('<div class="page">\n            <button class="auth-btn auth-btn-fb firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Facebook</button><br>\n            <button class="auth-btn auth-btn-dn firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 \u0414\u043D\u0435\u0432\u043D\u0438\u043A.\u0440\u0443</button>\n            <div class="list"></div>\n          </div>');
         that.getList();
       }
     });
 
-    $('#app').on('click', '.auth-btn', function () {
+    $('#app').on('click', '.auth-btn-fb', function () {
       firebase.auth().signInWithPopup(provider);
+    });
+
+    $('#app').on('click', '.auth-btn-dn', function () {
+      Auth.auth();
     });
 
     $('#app').on('click', '.logout-btn', function () {

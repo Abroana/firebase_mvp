@@ -1,9 +1,19 @@
 // @ts-nocheck
 /* global firebase */
+import { Auth } from './modules/auth.js'
 
 const App = {
   init() {
     const that = this
+
+    if (document.location.href.indexOf('access_token') > -1) {
+      Auth.auth(function() {
+        var path = window.location.pathname.substring(0, window.location.pathname.length)
+
+        history.pushState('', document.title, path)
+      })
+    }
+
     const firebaseConfig = {
       apiKey: 'AIzaSyCmEjhSDdqEsmIdxe9VN4GI7IxTD2LhU4I',
       authDomain: 'testproject-48d5e.firebaseapp.com',
@@ -49,14 +59,22 @@ const App = {
         that.getList()
       } else {
         $('#app').html(
-          '<div class="page"><button class="auth-btn firebase-btn">Войти</button><div class="list"></div></div>'
+          `<div class="page">
+            <button class="auth-btn auth-btn-fb firebase-btn">Войти через Facebook</button><br>
+            <button class="auth-btn auth-btn-dn firebase-btn">Войти через Дневник.ру</button>
+            <div class="list"></div>
+          </div>`
         )
         that.getList()
       }
     })
 
-    $('#app').on('click', '.auth-btn', function() {
+    $('#app').on('click', '.auth-btn-fb', function() {
       firebase.auth().signInWithPopup(provider)
+    })
+
+    $('#app').on('click', '.auth-btn-dn', function() {
+      Auth.auth()
     })
 
     $('#app').on('click', '.logout-btn', function() {
