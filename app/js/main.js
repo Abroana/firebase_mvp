@@ -16,6 +16,9 @@ const App = {
 
     firebase.initializeApp(firebaseConfig)
     this.database = firebase.firestore()
+    this.storageService = firebase.storage()
+    this.storageRef = this.storageService.ref()
+
     const provider = new firebase.auth.FacebookAuthProvider()
 
     provider.setCustomParameters({
@@ -30,9 +33,14 @@ const App = {
           </div>
           <div class="page">
             <div class="page__title">Добро пожаловать, ${user.displayName}!</div>
-            <div class="page__subtitle">Оставьте след в истории:</div>
-            <input class="page__input">
-            <button class="send firebase-btn">Отправить</button>
+            <div class="page__subtitle">Выберите файл для загрузки:</div>
+            <div id="filesubmit">
+              <input type="file" class="file-select" accept="image/*"/>
+              <div class="placeholder"></div>
+              <div class="msg"></div>
+              <button class="send firebase-btn">Отправить</button>
+            </div>
+            
             <div class="list"></div>
           </div>
         `
@@ -40,7 +48,10 @@ const App = {
         $('#app').html(html)
         that.getList()
       } else {
-        $('#app').html('<button class="auth-btn firebase-btn">Войти</button>')
+        $('#app').html(
+          '<div class="page"><button class="auth-btn firebase-btn">Войти</button><div class="list"></div></div>'
+        )
+        that.getList()
       }
     })
 
@@ -52,29 +63,29 @@ const App = {
       firebase.auth().signOut()
     })
 
-    $('#app').on('click', '.send', function() {
-      const val = $('.page__input').val()
+    // $('#app').on('click', '.send', function() {
+    //   const val = $('.page__input').val()
 
-      if (val.length) {
-        $('.page__input').val('')
-        that.database
-          .collection('sandbox')
-          .add({
-            user: firebase.auth().currentUser.uid,
-            text: val,
-            created: firebase.firestore.FieldValue.serverTimestamp()
-          })
-          .then(function(docRef) {
-            // eslint-disable-next-line
-            console.log('Document written with ID: ', docRef.id)
-            that.getList()
-          })
-          .catch(function(error) {
-            // eslint-disable-next-line
-            console.error('Error adding document: ', error)
-          })
-      }
-    })
+    //   if (val.length) {
+    //     $('.page__input').val('')
+    //     that.database
+    //       .collection('sandbox')
+    //       .add({
+    //         user: firebase.auth().currentUser.uid,
+    //         text: val,
+    //         created: firebase.firestore.FieldValue.serverTimestamp()
+    //       })
+    //       .then(function(docRef) {
+    //         // eslint-disable-next-line
+    //         console.log('Document written with ID: ', docRef.id)
+    //         that.getList()
+    //       })
+    //       .catch(function(error) {
+    //         // eslint-disable-next-line
+    //         console.error('Error adding document: ', error)
+    //       })
+    //   }
+    // })
 
     $('#app').on('click', '.item__remove', function() {
       that.database
@@ -91,29 +102,63 @@ const App = {
           console.error('Error removing document: ', error)
         })
     })
+
+    let selectedFile
+
+    $('#app').on('click', '.placeholder', function() {
+      $('.file-select').click()
+    })
+
+    $('#app').on('change', '.file-select', function(e) {
+      selectedFile = e.target.files[0]
+      $('.placeholder').html(
+        `<img src="${URL.createObjectURL(e.target.files[0])}" class="placeholder__img">`
+      )
+    })
+
+    $('#app').on('click', '.send', function() {
+      const uploadTask = that.storageRef.child(`images/${selectedFile.name}`).put(selectedFile) // create a child directory called images, and place the file inside this directory
+
+      uploadTask.on(
+        'state_changed',
+        snapshot => {
+          // eslint-disable-next-line
+          console.log(snapshot)
+        },
+        error => {
+          // eslint-disable-next-line
+          console.log(error)
+        },
+        () => {
+          $('.placeholder').empty()
+          $('.msg').html('Изображение загружено')
+          that.getList()
+        }
+      )
+    })
   },
 
   getList() {
-    this.database
-      .collection('sandbox')
-      .orderBy('created', 'desc')
-      .get()
-      .then(querySnapshot => {
-        const list = querySnapshot.docs.map(
-          item =>
-            `<div class="item">${item.data().text}${
-              item.data().user === firebase.auth().currentUser.uid
-                ? `<span
-                  class="item__remove"
-                  data-id="${item.id}"
-                >
-                  +
-                </span>`
-                : ''
-            }</div>`
-        )
+    const that = this
+    var listRef = this.storageRef.child('images')
 
-        $('.list').html(list.join(''))
+    $('.list').empty()
+    listRef
+      .listAll()
+      .then(res => {
+        res.items.map(item => {
+          that.storageService
+            .ref(item.fullPath)
+            .getDownloadURL()
+            .then(url => {
+              $('.list').append(`
+                <img class="list__item" src="${url}">`)
+            })
+        })
+      })
+      .catch(function(error) {
+        // eslint-disable-next-line
+        console.error(error)
       })
   }
 }

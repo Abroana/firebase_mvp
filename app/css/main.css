@@ -50,7 +50,8 @@
 }
 
 .list {
-  margin-top: 40px;
+  width: 979px;
+  margin: 40px -10px 0;
 }
 
 .item {
@@ -72,4 +73,53 @@
   font-size: 30px;
   cursor: pointer;
   color: #e65100;
+}
+
+.file-select {
+  display: none;
+}
+
+.placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 10px;
+  border: 3px dashed #b0bec5;
+  margin-bottom: 20px;
+  cursor: pointer;
+  background-image: url(https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4NWO61pCCzLTe6L0FXeVgkdT3bsHjnOVAAqo-0TA6UeG-eoLg);
+  background-position: center;
+  background-size: 40px 40px;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 30px 0 20px;
+}
+
+.placeholder:hover {
+  border: 3px dashed #90a4ae;
+}
+
+.placeholder__img {
+  border-radius: 10px;
+  max-width: 100%;
+}
+
+.msg {
+  margin-bottom: 20px;
+  min-height: 16px;
+}
+
+.list__item {
+  width: 300px;
+  height: 160px;
+  object-fit: contain;
+  border: 1px solid #b0bec5;
+  background: #eceff1;
+  margin: 10px;
+}
+
+.auth-btn {
+  margin: auto;
+  display: block;
 }
