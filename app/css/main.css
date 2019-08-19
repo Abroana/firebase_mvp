@@ -17,6 +17,7 @@
   font-size: 15px;
   color: #fff;
   text-transform: uppercase;
+  display: inline-block;
 }
 
 .header {
@@ -121,5 +122,8 @@
 
 .auth-btn {
   margin: auto;
+  width: 270px;
   display: block;
+  box-sizing: border-box;
+  text-align: center;
 }

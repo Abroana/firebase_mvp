@@ -52,36 +52,45 @@ var isMobile = function () {
 }();
 
 var appOptions = {
-  authUrl: 'https://login.dnevnik.ru/oauth2',
-  grantUrl: 'https://api.dnevnik.ru/v1/authorizations',
+  authUrl: 'https://login.feature12.dnevnik.ru/oauth2',
+  grantUrl: 'https://api.feature12.dnevnik.ru/v1/authorizations',
   scope: 'CommonInfo',
-  clientId: 'c2eb1c41dac14f98883add55494b9cf9',
-  redirectUrl: window.location.href + '?auth=true',
+  clientId: 'cebd34d2c9b9442788135f71d731fdaf',
+  redirectUrl: '' + window.location.origin + window.location.pathname + '?auth=dn',
   provider: 'firebase',
-  api: 'https://api.dnevnik.ru/v1/',
-  apiMobile: 'https://api.dnevnik.ru/modile/v1/',
+  api: 'https://api.feature12.dnevnik.ru/v1/',
+  apiMobile: 'https://api.feature12.dnevnik.ru/modile/v1/',
   isMobile: isMobile,
-  userLink: 'https://dnevnik.ru/user/user.aspx?user=',
-  cdnPath: 'https://ad.csdnevnik.ru/special/staging/petsforever/img/',
-  cdnMain: 'https://ad.csdnevnik.ru/special/staging/petsforever/',
-  origin: '.dnevnik.ru',
+  userLink: 'https://feature12.dnevnik.ru/user/user.aspx?user=',
+  cdnPath: 'https://ad.csfeature12.dnevnik.ru/special/staging/petsforever/img/',
+  cdnMain: 'https://ad.csfeature12.dnevnik.ru/special/staging/petsforever/',
+  origin: '.feature12.dnevnik.ru',
   admins: ['1000006315838', '1000006435101', '1000004681017', '1000004934922', '1000005435557', '1000008630961', '1000003565717']
 };
 
 var Auth = {
   token: undefined,
+  authType: '',
+
   auth: function auth(callback) {
-    var token;
+    var that = this;
 
     function getToken() {
-      token = /access_token=([-0-9a-zA-Z_]+)/.exec(window.location.hash) || [];
+      var token = /access_token=([-0-9a-zA-Z_]+)/.exec(window.location.hash) || [];
+      var authType = /auth=([-0-9a-zA-Z_]+)/.exec(window.location.search) || [];
+
+      that.authType = authType[1];
+      Cookie.set('authType', authType[1]);
 
       return token[1];
     }
-    token = Cookie.get(appOptions.provider + '_token') || getToken();
+    var token = Cookie.get(appOptions.provider + '_token') || getToken();
+
     if (undefined !== token) {
-      Cookie.delete(appOptions.provider + '_token');
-      Cookie.set(appOptions.provider + '_token', token);
+      var authType = this.authType || Cookie.get('authType');
+
+      Cookie.delete(appOptions.provider + '-' + authType + '_token');
+      Cookie.set(appOptions.provider + '-' + authType + '_token', token);
       this.token = token;
       if (typeof callback === 'function') {
         callback();
@@ -92,10 +101,11 @@ var Auth = {
       if (undefined !== error[1]) {
         Cookie.delete(appOptions.provider + '_token');
         this.token = undefined;
-      } else {
-        window.location.href = appOptions.authUrl + '?response_type=token&client_id=' + appOptions.clientId + '&scope=' + appOptions.scope + '&redirect_uri=' + appOptions.redirectUrl;
       }
     }
+  },
+  getLink: function getLink() {
+    return appOptions.authUrl + '?response_type=token&client_id=' + appOptions.clientId + '&scope=' + appOptions.scope + '&redirect_uri=' + appOptions.redirectUrl;
   }
 };
 
@@ -111,6 +121,19 @@ var App = {
 
         history.pushState('', document.title, path);
       });
+    }
+
+    var authType = Cookie.get('authType');
+    var token = Cookie.get(appOptions.provider + '-' + authType + '_token');
+
+    if (token) {
+      switch (authType) {
+        case 'vk':
+          that.getToken('https://api.feature12.dnevnik.ru/v2/firebase/vktoken?vkToken=' + token + '&lang=ru');
+          break;
+        case 'dn':
+          that.getToken('https://api.feature12.dnevnik.ru/v2/firebase/dnevniktoken?access_token=' + token);
+      }
     }
 
     var firebaseConfig = {
@@ -141,7 +164,7 @@ var App = {
         $('#app').html(html);
         that.getList();
       } else {
-        $('#app').html('<div class="page">\n            <button class="auth-btn auth-btn-fb firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Facebook</button><br>\n            <button class="auth-btn auth-btn-dn firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 \u0414\u043D\u0435\u0432\u043D\u0438\u043A.\u0440\u0443</button>\n            <div class="list"></div>\n          </div>');
+        $('#app').html('<div class="page">\n            <button class="auth-btn auth-btn-fb firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Facebook</button><br>\n            <a href="https://oauth.vk.com/authorize?client_id=7097936&display=page&redirect_uri=' + (window.location.href + '?auth=vk') + '&scope=&response_type=token&v=5.5" class="auth-btn auth-btn-vk firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Vk.com</a><br>\n            <a href=' + Auth.getLink() + ' class="auth-btn auth-btn-dn firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 \u0414\u043D\u0435\u0432\u043D\u0438\u043A.\u0440\u0443</a>\n            <div class="list"></div>\n          </div>');
         that.getList();
       }
     });
@@ -155,6 +178,10 @@ var App = {
     });
 
     $('#app').on('click', '.logout-btn', function () {
+      var authType = Cookie.get('authType');
+
+      Cookie.delete(appOptions.provider + '-' + authType + '_token');
+      Cookie.delete('authType');
       firebase.auth().signOut();
     });
 
@@ -234,6 +261,35 @@ var App = {
     }).catch(function (error) {
       // eslint-disable-next-line
       console.error(error);
+    });
+  },
+  getToken: function getToken(url) {
+    $.ajax({
+      contentType: 'application/json',
+      data: JSON.stringify({}),
+      dataType: 'json',
+      success: function success(data) {
+        // eslint-disable-next-line
+        console.log(data);
+        firebase.auth().signInWithCustomToken(data.token).then(function (user) {
+          // eslint-disable-next-line
+          console.log(user);
+          var u = firebase.auth().currentUser;
+
+          if (!u.displayName) {
+            u.updateProfile({
+              displayName: data.displayName,
+              photoURL: data.photoURL
+            });
+          }
+        }).catch(function (error) {
+          // eslint-disable-next-line
+          console.log(error);
+        });
+      },
+      processData: false,
+      type: 'POST',
+      url: url
     });
   }
 };

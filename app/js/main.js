@@ -1,6 +1,8 @@
 // @ts-nocheck
 /* global firebase */
 import { Auth } from './modules/auth.js'
+import Cookie from './modules/cookie.js'
+import appOptions from './modules/settings.js'
 
 const App = {
   init() {
@@ -8,10 +10,27 @@ const App = {
 
     if (document.location.href.indexOf('access_token') > -1) {
       Auth.auth(function() {
-        var path = window.location.pathname.substring(0, window.location.pathname.length)
+        const path = window.location.pathname.substring(0, window.location.pathname.length)
 
         history.pushState('', document.title, path)
       })
+    }
+
+    const authType = Cookie.get('authType')
+    const token = Cookie.get(`${appOptions.provider}-${authType}_token`)
+
+    if (token) {
+      switch (authType) {
+        case 'vk':
+          that.getToken(
+            `https://api.feature12.dnevnik.ru/v2/firebase/vktoken?vkToken=${token}&lang=ru`
+          )
+          break
+        case 'dn':
+          that.getToken(
+            `https://api.feature12.dnevnik.ru/v2/firebase/dnevniktoken?access_token=${token}`
+          )
+      }
     }
 
     const firebaseConfig = {
@@ -61,7 +80,10 @@ const App = {
         $('#app').html(
           `<div class="page">
             <button class="auth-btn auth-btn-fb firebase-btn">Войти через Facebook</button><br>
-            <button class="auth-btn auth-btn-dn firebase-btn">Войти через Дневник.ру</button>
+            <a href="https://oauth.vk.com/authorize?client_id=7097936&display=page&redirect_uri=${`${
+    window.location.href
+  }?auth=vk`}&scope=&response_type=token&v=5.5" class="auth-btn auth-btn-vk firebase-btn">Войти через Vk.com</a><br>
+            <a href=${Auth.getLink()} class="auth-btn auth-btn-dn firebase-btn">Войти через Дневник.ру</a>
             <div class="list"></div>
           </div>`
         )
@@ -78,6 +100,10 @@ const App = {
     })
 
     $('#app').on('click', '.logout-btn', function() {
+      const authType = Cookie.get('authType')
+
+      Cookie.delete(`${appOptions.provider}-${authType}_token`)
+      Cookie.delete('authType')
       firebase.auth().signOut()
     })
 
@@ -178,6 +204,40 @@ const App = {
         // eslint-disable-next-line
         console.error(error)
       })
+  },
+
+  getToken(url) {
+    $.ajax({
+      contentType: 'application/json',
+      data: JSON.stringify({}),
+      dataType: 'json',
+      success: function(data) {
+        // eslint-disable-next-line
+        console.log(data)
+        firebase
+          .auth()
+          .signInWithCustomToken(data.token)
+          .then(user => {
+            // eslint-disable-next-line
+            console.log(user)
+            const u = firebase.auth().currentUser
+
+            if (!u.displayName) {
+              u.updateProfile({
+                displayName: data.displayName,
+                photoURL: data.photoURL
+              })
+            }
+          })
+          .catch(error => {
+            // eslint-disable-next-line
+            console.log(error)
+          })
+      },
+      processData: false,
+      type: 'POST',
+      url: url
+    })
   }
 }
 
