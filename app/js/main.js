@@ -8,7 +8,10 @@ const App = {
   init() {
     const that = this
 
-    if (document.location.href.indexOf('access_token') > -1) {
+    if (
+      document.location.href.indexOf('access_token') > -1 ||
+      document.location.href.indexOf('code') > -1
+    ) {
       Auth.auth(function() {
         const path = window.location.pathname.substring(0, window.location.pathname.length)
 
@@ -23,13 +26,21 @@ const App = {
       switch (authType) {
         case 'vk':
           that.getToken(
-            `https://api.feature12.dnevnik.ru/v2/firebase/vktoken?vkToken=${token}&lang=ru`
+            `https://api.feature12.dnevnik.ru/v1/firebase/token/vk?vkToken=${token}&lang=ru`
           )
           break
         case 'dn':
           that.getToken(
-            `https://api.feature12.dnevnik.ru/v2/firebase/dnevniktoken?access_token=${token}`
+            `https://api.feature12.dnevnik.ru/v1/firebase/token/dk?access_token=${token}`
           )
+          break
+        case 'ok':
+          that.getToken(
+            `https://api.feature12.dnevnik.ru/v1/firebase/token/ok?okCode=${token}&redirectUri=${
+              window.location.href
+            }?auth=ok`
+          )
+          break
       }
     }
 
@@ -61,7 +72,7 @@ const App = {
             <button class="logout-btn firebase-btn">Выйти</button>
           </div>
           <div class="page">
-            <div class="page__title">Добро пожаловать, ${user.displayName}!</div>
+            <div class="page__title"></div>
             <div class="page__subtitle">Выберите файл для загрузки:</div>
             <div id="filesubmit">
               <input type="file" class="file-select" accept="image/*"/>
@@ -75,6 +86,7 @@ const App = {
         `
 
         $('#app').html(html)
+        that.drawUser()
         that.getList()
       } else {
         $('#app').html(
@@ -83,6 +95,9 @@ const App = {
             <a href="https://oauth.vk.com/authorize?client_id=7097936&display=page&redirect_uri=${`${
     window.location.href
   }?auth=vk`}&scope=&response_type=token&v=5.5" class="auth-btn auth-btn-vk firebase-btn">Войти через Vk.com</a><br>
+            <a href="https://connect.ok.ru/oauth/authorize?client_id=1281062144&scope=&response_type=code&redirect_uri=${
+  window.location.href
+}?auth=ok" class="auth-btn auth-btn-vk firebase-btn">Войти через Одноклассники</a><br>
             <a href=${Auth.getLink()} class="auth-btn auth-btn-dn firebase-btn">Войти через Дневник.ру</a>
             <div class="list"></div>
           </div>`
@@ -207,6 +222,8 @@ const App = {
   },
 
   getToken(url) {
+    const that = this
+
     $.ajax({
       contentType: 'application/json',
       data: JSON.stringify({}),
@@ -226,6 +243,8 @@ const App = {
               u.updateProfile({
                 displayName: data.displayName,
                 photoURL: data.photoURL
+              }).then(() => {
+                that.drawUser()
               })
             }
           })
@@ -238,6 +257,14 @@ const App = {
       type: 'POST',
       url: url
     })
+  },
+
+  drawUser() {
+    const user = firebase.auth().currentUser
+
+    if (user.displayName) {
+      $('.page__title').html(`Добро пожаловать, ${user.displayName}!`)
+    }
   }
 }
 

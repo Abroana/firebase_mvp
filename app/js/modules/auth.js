@@ -10,12 +10,13 @@ export var Auth = {
 
     function getToken() {
       const token = /access_token=([-0-9a-zA-Z_]+)/.exec(window.location.hash) || []
+      const code = /code=([-0-9a-zA-Z_]+)/.exec(window.location.search) || []
       const authType = /auth=([-0-9a-zA-Z_]+)/.exec(window.location.search) || []
 
       that.authType = authType[1]
       Cookie.set('authType', authType[1])
 
-      return token[1]
+      return token[1] || code[1]
     }
     const token = Cookie.get(`${appOptions.provider}_token`) || getToken()
 

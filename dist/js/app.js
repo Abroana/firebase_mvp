@@ -77,12 +77,13 @@ var Auth = {
 
     function getToken() {
       var token = /access_token=([-0-9a-zA-Z_]+)/.exec(window.location.hash) || [];
+      var code = /code=([-0-9a-zA-Z_]+)/.exec(window.location.search) || [];
       var authType = /auth=([-0-9a-zA-Z_]+)/.exec(window.location.search) || [];
 
       that.authType = authType[1];
       Cookie.set('authType', authType[1]);
 
-      return token[1];
+      return token[1] || code[1];
     }
     var token = Cookie.get(appOptions.provider + '_token') || getToken();
 
@@ -115,7 +116,7 @@ var App = {
   init: function init() {
     var that = this;
 
-    if (document.location.href.indexOf('access_token') > -1) {
+    if (document.location.href.indexOf('access_token') > -1 || document.location.href.indexOf('code') > -1) {
       Auth.auth(function () {
         var path = window.location.pathname.substring(0, window.location.pathname.length);
 
@@ -129,10 +130,14 @@ var App = {
     if (token) {
       switch (authType) {
         case 'vk':
-          that.getToken('https://api.feature12.dnevnik.ru/v2/firebase/vktoken?vkToken=' + token + '&lang=ru');
+          that.getToken('https://api.feature12.dnevnik.ru/v1/firebase/token/vk?vkToken=' + token + '&lang=ru');
           break;
         case 'dn':
-          that.getToken('https://api.feature12.dnevnik.ru/v2/firebase/dnevniktoken?access_token=' + token);
+          that.getToken('https://api.feature12.dnevnik.ru/v1/firebase/token/dk?access_token=' + token);
+          break;
+        case 'ok':
+          that.getToken('https://api.feature12.dnevnik.ru/v1/firebase/token/ok?okCode=' + token + '&redirectUri=' + window.location.href + '?auth=ok');
+          break;
       }
     }
 
@@ -159,12 +164,13 @@ var App = {
 
     firebase.auth().onAuthStateChanged(function (user) {
       if (user) {
-        var html = '\n          <div class="header">\n            <button class="logout-btn firebase-btn">\u0412\u044B\u0439\u0442\u0438</button>\n          </div>\n          <div class="page">\n            <div class="page__title">\u0414\u043E\u0431\u0440\u043E \u043F\u043E\u0436\u0430\u043B\u043E\u0432\u0430\u0442\u044C, ' + user.displayName + '!</div>\n            <div class="page__subtitle">\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0434\u043B\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438:</div>\n            <div id="filesubmit">\n              <input type="file" class="file-select" accept="image/*"/>\n              <div class="placeholder"></div>\n              <div class="msg"></div>\n              <button class="send firebase-btn">\u041E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C</button>\n            </div>\n            \n            <div class="list"></div>\n          </div>\n        ';
+        var html = '\n          <div class="header">\n            <button class="logout-btn firebase-btn">\u0412\u044B\u0439\u0442\u0438</button>\n          </div>\n          <div class="page">\n            <div class="page__title"></div>\n            <div class="page__subtitle">\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043B \u0434\u043B\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438:</div>\n            <div id="filesubmit">\n              <input type="file" class="file-select" accept="image/*"/>\n              <div class="placeholder"></div>\n              <div class="msg"></div>\n              <button class="send firebase-btn">\u041E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C</button>\n            </div>\n            \n            <div class="list"></div>\n          </div>\n        ';
 
         $('#app').html(html);
+        that.drawUser();
         that.getList();
       } else {
-        $('#app').html('<div class="page">\n            <button class="auth-btn auth-btn-fb firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Facebook</button><br>\n            <a href="https://oauth.vk.com/authorize?client_id=7097936&display=page&redirect_uri=' + (window.location.href + '?auth=vk') + '&scope=&response_type=token&v=5.5" class="auth-btn auth-btn-vk firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Vk.com</a><br>\n            <a href=' + Auth.getLink() + ' class="auth-btn auth-btn-dn firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 \u0414\u043D\u0435\u0432\u043D\u0438\u043A.\u0440\u0443</a>\n            <div class="list"></div>\n          </div>');
+        $('#app').html('<div class="page">\n            <button class="auth-btn auth-btn-fb firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Facebook</button><br>\n            <a href="https://oauth.vk.com/authorize?client_id=7097936&display=page&redirect_uri=' + (window.location.href + '?auth=vk') + '&scope=&response_type=token&v=5.5" class="auth-btn auth-btn-vk firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 Vk.com</a><br>\n            <a href="https://connect.ok.ru/oauth/authorize?client_id=1281062144&scope=&response_type=code&redirect_uri=' + window.location.href + '?auth=ok" class="auth-btn auth-btn-vk firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 \u041E\u0434\u043D\u043E\u043A\u043B\u0430\u0441\u0441\u043D\u0438\u043A\u0438</a><br>\n            <a href=' + Auth.getLink() + ' class="auth-btn auth-btn-dn firebase-btn">\u0412\u043E\u0439\u0442\u0438 \u0447\u0435\u0440\u0435\u0437 \u0414\u043D\u0435\u0432\u043D\u0438\u043A.\u0440\u0443</a>\n            <div class="list"></div>\n          </div>');
         that.getList();
       }
     });
@@ -264,6 +270,8 @@ var App = {
     });
   },
   getToken: function getToken(url) {
+    var that = this;
+
     $.ajax({
       contentType: 'application/json',
       data: JSON.stringify({}),
@@ -280,6 +288,8 @@ var App = {
             u.updateProfile({
               displayName: data.displayName,
               photoURL: data.photoURL
+            }).then(function () {
+              that.drawUser();
             });
           }
         }).catch(function (error) {
@@ -291,6 +301,13 @@ var App = {
       type: 'POST',
       url: url
     });
+  },
+  drawUser: function drawUser() {
+    var user = firebase.auth().currentUser;
+
+    if (user.displayName) {
+      $('.page__title').html('\u0414\u043E\u0431\u0440\u043E \u043F\u043E\u0436\u0430\u043B\u043E\u0432\u0430\u0442\u044C, ' + user.displayName + '!');
+    }
   }
 };
 
